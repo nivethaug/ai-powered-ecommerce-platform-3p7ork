@@ -1,0 +1,22 @@
+{
+  "apps": [
+    {
+      "name": "ai-powered-ecommerce-platform-3p7ork-backend",
+      "script": "/root/dreampilot/dreampilotvenv/bin/uvicorn",
+      "args": "main:app --host 0.0.0.0 --port 8015",
+      "cwd": "/root/dreampilot/projects/website/1080_ai-powered-ecommerce-platform_20260409_120949/backend",
+      "interpreter": "none",
+      "instances": 1,
+      "exec_mode": "fork",
+      "watch": false,
+      "max_memory_restart": "500M",
+      "env": {
+        "PORT": "8015",
+        "BACKEND_HOST": "0.0.0.0",
+        "BACKEND_PORT": "8015",
+        "PROJECT_NAME": "ai-powered-ecommerce-platform-3p7ork",
+        "DATABASE_URL": "postgresql://ai_powered_ecommerce_platform_3p7ork_user:vIQbgeUzUX0ToFRgVyXW2zrpkCGPg5CZ@localhost:5432/ai_powered_ecommerce_platform_3p7ork_db"
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "pages": [
+    "Products",
+    "Orders",
+    "Customers",
+    "Inventory",
+    "Analytics",
+    "Storesettings"
+  ],
+  "generated_at": null,
+  "scaffolded": false
+}
