@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
+import ChatBot from "@/components/ChatBot";
 
 /**
  * Layout component - Main application layout wrapper
@@ -11,6 +12,7 @@ import Navbar from "./Navbar";
  * - Full viewport height (h-screen)
  * - Flex container with navbar and scrollable content
  * - Navbar at top, main content below
+ * - AI ChatBot floating widget
  */
 const Layout = () => {
   return (
@@ -24,6 +26,9 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* AI ChatBot */}
+      <ChatBot />
     </div>
   );
 };
