@@ -148,7 +148,7 @@ export const healthService = {
  */
 export const authService = {
   register: (email: string, password: string, name?: string) =>
-    api.post(apiConfig.endpoints.auth.register, { email, password, name }),
+    api.post<{ message: string }>(apiConfig.endpoints.auth.register, { email, password, name }),
   
   login: (email: string, password: string) =>
     api.post<{ token: string; user: User }>(apiConfig.endpoints.auth.login, { email, password }),
@@ -208,7 +208,7 @@ export interface User {
   id: number;
   email: string;
   name?: string;
-  created_at: string;
+  created_at?: string;
   updated_at?: string;
 }
 
