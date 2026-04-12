@@ -8,11 +8,11 @@ IMPORTANT: Call this script AFTER making ANY changes to the frontend code!
 - This will rebuild the app and restart PM2 + nginx automatically
 - Only skip restart with --no-restart if you're just testing locally
 
-Matches infrastructure_manager.py build_frontend() process:
+Build process using pnpm:
 1. Clean Vite caches
 2. Remove existing node_modules
-3. npm ci --prefer-offline --no-audit --progress=false
-4. npm run build
+3. pnpm install --force
+4. pnpm run build
 5. Verify dist
 6. Fix permissions
 7. Cleanup node_modules
@@ -89,27 +89,26 @@ def remove_node_modules():
 
 
 def npm_install(cwd: str = None):
-    """Install npm dependencies using npm ci (matches infrastructure_manager.py)"""
+    """Install npm dependencies using pnpm"""
     print("\n" + "="*50)
-    print("NPM CI")
+    print("PNPM INSTALL")
     print("="*50)
-    
-    # Match infrastructure_manager.py approach
-    # Use npm ci for faster, reproducible installs
+
+    # Use pnpm for reliable dependency installation
     result = subprocess.run(
-        ["npm", "install", "--prefer-offline", "--legacy-peer-deps"],
+        ["pnpm", "install", "--force"],
         capture_output=True,
         text=True,
         timeout=600,
         cwd=cwd
     )
-    
+
     if result.returncode != 0:
-        # Extract actual errors from stderr (npm warnings go to stderr but don't fail)
+        # Extract actual errors from stderr (pnpm warnings go to stderr but don't fail)
         stderr_lines = result.stderr.split('\n')
         error_lines = [line for line in stderr_lines if any(kw in line.lower() for kw in ['error', 'err!', 'econnrefused', 'eacces', 'enoent'])]
-        
-        print(f"✗ npm ci failed with code {result.returncode}")
+
+        print(f"✗ pnpm install failed with code {result.returncode}")
         if error_lines:
             print("Errors:")
             for line in error_lines[-10:]:
@@ -117,30 +116,30 @@ def npm_install(cwd: str = None):
         else:
             print(f"stderr: {result.stderr[:500]}")
         return False
-    
-    print("✓ npm ci completed")
+
+    print("✓ pnpm install completed")
     return True
 
 
 def npm_build(cwd: str = None):
-    """Build production bundle"""
+    """Build production bundle using pnpm"""
     print("\n" + "="*50)
-    print("NPM RUN BUILD")
+    print("PNPM RUN BUILD")
     print("="*50)
-    
+
     result = subprocess.run(
-        ["npm", "run", "build"],
+        ["pnpm", "run", "build"],
         capture_output=True,
         text=True,
         timeout=600,
         cwd=cwd
     )
-    
+
     if result.returncode != 0:
-        print(f"✗ npm run build failed: {result.stderr[:500]}")
+        print(f"✗ pnpm run build failed: {result.stderr[:500]}")
         return False
-    
-    print("✓ npm run build completed")
+
+    print("✓ pnpm run build completed")
     return True
 
 
@@ -245,9 +244,9 @@ def reload_nginx():
 def main():
     parser = argparse.ArgumentParser(description="Frontend Build & Publish")
     parser.add_argument("--path", type=str, help="Frontend directory path (default: current directory)")
-    parser.add_argument("--skip-install", action="store_true", help="Skip npm install")
-    parser.add_argument("--skip-build", action="store_true", help="Skip npm build")
-    parser.add_argument("--install-only", action="store_true", help="Run only npm ci (skip build, restart, cleanup)")
+    parser.add_argument("--skip-install", action="store_true", help="Skip pnpm install")
+    parser.add_argument("--skip-build", action="store_true", help="Skip pnpm build")
+    parser.add_argument("--install-only", action="store_true", help="Run only pnpm install (skip build, restart, cleanup)")
     parser.add_argument("--no-restart", action="store_true", help="Skip PM2 and nginx restart (restart is default)")
     args = parser.parse_args()
     
@@ -273,7 +272,7 @@ def main():
         print("="*50)
         
         clean_vite_caches()
-        # Skip remove_node_modules - run npm ci on top of existing node_modules
+        # Skip remove_node_modules - run pnpm install on top of existing node_modules
         
         if npm_install(cwd=str(frontend_dir)):
             print("\n" + "="*50)
@@ -293,12 +292,12 @@ def main():
     if not args.skip_install:
         remove_node_modules()
     
-    # Step 3: npm install
+    # Step 3: pnpm install
     if not args.skip_install:
         if not npm_install(cwd=str(frontend_dir)):
             success = False
-    
-    # Step 4: npm run build
+
+    # Step 4: pnpm run build
     if not args.skip_build and success:
         if not npm_build(cwd=str(frontend_dir)):
             success = False
