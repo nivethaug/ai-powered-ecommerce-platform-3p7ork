@@ -1,2 +1,7 @@
-# Models module
-from .user import User, Base
+"""
+Models package for DreamPilot backend.
+"""
+from models.user import User
+from models.product import Product
+
+__all__ = ["User", "Product"]
