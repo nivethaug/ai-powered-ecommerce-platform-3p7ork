@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Plus, Search, Filter, DollarSign, TrendingUp, Edit, Trash2 } from 'lucide-react';
+import { Package, Plus, Search, Filter, DollarSign, TrendingUp, Edit, Trash2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -10,17 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  stock: number;
-  status: 'in-stock' | 'low-stock' | 'out-of-stock';
-  sales: number;
-  trend: number;
-}
+import { productService, type Product } from '@/services/database';
+import { useToast } from '@/hooks/use-toast';
 
 interface StatCardProps {
   title: string;
@@ -51,66 +42,44 @@ export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  const categories = ['all', 'Electronics', 'Clothing', 'Home & Garden', 'Sports'];
+  // Extract unique categories from products
+  const categories = ['all', ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
 
   useEffect(() => {
-    setTimeout(() => {
-      setProducts([
-        {
-          id: '1',
-          name: 'Wireless Bluetooth Headphones',
-          price: 79.99,
-          category: 'Electronics',
-          stock: 45,
-          status: 'in-stock',
-          sales: 234,
-          trend: 12.5,
-        },
-        {
-          id: '2',
-          name: 'Premium Cotton T-Shirt',
-          price: 24.99,
-          category: 'Clothing',
-          stock: 8,
-          status: 'low-stock',
-          sales: 189,
-          trend: -3.2,
-        },
-        {
-          id: '3',
-          name: 'Smart Home Speaker',
-          price: 129.99,
-          category: 'Electronics',
-          stock: 0,
-          status: 'out-of-stock',
-          sales: 456,
-          trend: 8.7,
-        },
-        {
-          id: '4',
-          name: 'Garden Tool Set',
-          price: 49.99,
-          category: 'Home & Garden',
-          stock: 23,
-          status: 'in-stock',
-          sales: 98,
-          trend: 15.3,
-        },
-        {
-          id: '5',
-          name: 'Yoga Mat Premium',
-          price: 34.99,
-          category: 'Sports',
-          stock: 67,
-          status: 'in-stock',
-          sales: 312,
-          trend: 22.1,
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    loadProducts();
   }, []);
+
+  async function loadProducts() {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await productService.list();
+      
+      if (result.success && result.data) {
+        setProducts(result.data);
+      } else {
+        setError(result.error || 'Failed to load products');
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: result.error || 'Failed to load products',
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load products';
+      setError(message);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: message,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -118,7 +87,13 @@ export default function Products() {
     return matchesSearch && matchesCategory;
   });
 
-  const getStatusColor = (status: Product['status']) => {
+  const getStockStatus = (stock: number): 'in-stock' | 'low-stock' | 'out-of-stock' => {
+    if (stock === 0) return 'out-of-stock';
+    if (stock < 10) return 'low-stock';
+    return 'in-stock';
+  };
+
+  const getStatusColor = (status: 'in-stock' | 'low-stock' | 'out-of-stock') => {
     switch (status) {
       case 'in-stock':
         return 'bg-green-100 text-green-800';
@@ -131,12 +106,30 @@ export default function Products() {
     }
   };
 
+  const lowStockCount = products.filter(p => p.stock_quantity < 10).length;
+  const totalValue = products.reduce((sum, p) => sum + (p.price * p.stock_quantity), 0);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-900 font-semibold mb-2">Failed to load products</p>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={loadProducts} variant="outline">
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -165,8 +158,8 @@ export default function Products() {
           trend="+12%"
         />
         <StatCard
-          title="Total Revenue"
-          value="$45,678"
+          title="Inventory Value"
+          value={`$${totalValue.toFixed(2)}`}
           icon={<DollarSign className="w-6 h-6 text-green-500" />}
           trend="+8%"
         />
@@ -178,9 +171,9 @@ export default function Products() {
         />
         <StatCard
           title="Low Stock Items"
-          value="3"
+          value={lowStockCount}
           icon={<Package className="w-6 h-6 text-orange-500" />}
-          trend="-2"
+          trend={lowStockCount > 0 ? `-${lowStockCount}` : 'OK'}
         />
       </div>
 
@@ -231,37 +224,41 @@ export default function Products() {
                   <th className="text-left py-3 px-4 font-semibold text-sm">Price</th>
                   <th className="text-left py-3 px-4 font-semibold text-sm">Stock</th>
                   <th className="text-left py-3 px-4 font-semibold text-sm">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold text-sm">Sales</th>
                   <th className="text-left py-3 px-4 font-semibold text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="border-b hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{product.name}</div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{product.category}</td>
-                    <td className="py-3 px-4 font-medium">${product.price.toFixed(2)}</td>
-                    <td className="py-3 px-4 text-gray-600">{product.stock}</td>
-                    <td className="py-3 px-4">
-                      <Badge className={getStatusColor(product.status)}>
-                        {product.status.replace('-', ' ').toUpperCase()}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600">{product.sales}</td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {filteredProducts.map((product) => {
+                  const stockStatus = getStockStatus(product.stock_quantity);
+                  return (
+                    <tr key={product.id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-900">{product.name}</div>
+                        {product.description && (
+                          <div className="text-sm text-gray-500 truncate max-w-xs">{product.description}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-gray-600">{product.category || '-'}</td>
+                      <td className="py-3 px-4 font-medium">${product.price.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-gray-600">{product.stock_quantity}</td>
+                      <td className="py-3 px-4">
+                        <Badge className={getStatusColor(stockStatus)}>
+                          {stockStatus.replace('-', ' ').toUpperCase()}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

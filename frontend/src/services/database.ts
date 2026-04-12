@@ -202,6 +202,27 @@ export function createCrudService<T>(resource: string) {
 }
 
 /**
+ * Products Service
+ */
+export const productService = {
+  list: (params?: QueryParams) =>
+    api.get<Product[]>(apiConfig.endpoints.products.list, params),
+  
+  getById: (id: string | number) =>
+    api.get<Product>(apiConfig.endpoints.products.byId(id)),
+  
+  create: (data: Partial<Product>) =>
+    api.post<Product>(apiConfig.endpoints.products.create, data),
+  
+  update: (id: string | number, data: Partial<Product>) =>
+    api.put<Product>(apiConfig.endpoints.products.update(id), data),
+  
+  delete: (id: string | number) =>
+    api.delete(apiConfig.endpoints.products.delete(id)),
+};
+
+
+/**
  * User type (customize based on your backend)
  */
 export interface User {
@@ -212,11 +233,30 @@ export interface User {
   updated_at?: string;
 }
 
+
+
+/**
+ * Product type
+ */
+export interface Product {
+  id: number;
+  name: string;
+  description?: string;
+  price: number;
+  stock_quantity: number;
+  category?: string;
+  image_url?: string;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Export all services
 export default {
   api,
   healthService,
   authService,
   userService,
+  productService,
   createCrudService,
 };
