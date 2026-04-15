@@ -12,10 +12,12 @@ from core.config import settings
 from core.database import init_db, SessionLocal
 from services.auth_service import AuthService
 from models.order import Order
+from models.customer import Customer
 from routes.health import router as health_router
 from routes.auth import router as auth_router
 from routes.products import router as products_router
 from routes.orders import router as orders_router
+from routes.customers import router as customers_router
 
 
 @asynccontextmanager
@@ -82,6 +84,73 @@ async def lifespan(app: FastAPI):
                 db.add(order)
             db.commit()
             print("✓ Seeded 5 sample orders")
+
+        # Seed sample customers if none exist
+        existing_customers = db.query(Customer).count()
+        if existing_customers == 0:
+            print("🔧 Seeding sample customers...")
+            from datetime import datetime
+            sample_customers = [
+                Customer(
+                    name="John Smith",
+                    email="john.smith@email.com",
+                    phone="+1 (555) 123-4567",
+                    location="New York, USA",
+                    avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=John",
+                    total_orders=24,
+                    total_spent=3456.78,
+                    status="vip",
+                    last_order_date=datetime(2024, 3, 10)
+                ),
+                Customer(
+                    name="Sarah Johnson",
+                    email="sarah.j@email.com",
+                    phone="+1 (555) 987-6543",
+                    location="Los Angeles, USA",
+                    avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
+                    total_orders=12,
+                    total_spent=1234.56,
+                    status="active",
+                    last_order_date=datetime(2024, 3, 14)
+                ),
+                Customer(
+                    name="Michael Brown",
+                    email="mbrown@email.com",
+                    phone="+1 (555) 456-7890",
+                    location="Chicago, USA",
+                    avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
+                    total_orders=8,
+                    total_spent=890.32,
+                    status="active",
+                    last_order_date=datetime(2024, 3, 12)
+                ),
+                Customer(
+                    name="Emily Davis",
+                    email="emily.d@email.com",
+                    phone="+1 (555) 234-5678",
+                    location="Houston, USA",
+                    avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
+                    total_orders=3,
+                    total_spent=234.50,
+                    status="inactive",
+                    last_order_date=datetime(2024, 1, 20)
+                ),
+                Customer(
+                    name="David Wilson",
+                    email="dwilson@email.com",
+                    phone="+1 (555) 345-6789",
+                    location="Phoenix, USA",
+                    avatar="https://api.dicebear.com/7.x/avataaars/svg?seed=David",
+                    total_orders=18,
+                    total_spent=2100.89,
+                    status="vip",
+                    last_order_date=datetime(2024, 3, 15)
+                ),
+            ]
+            for customer in sample_customers:
+                db.add(customer)
+            db.commit()
+            print("✓ Seeded 5 sample customers")
     finally:
         db.close()
 
@@ -101,7 +170,11 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://ai-powered-ecommerce-platform-3p7ork.dreambigwithai.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -111,6 +184,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(products_router)
 app.include_router(orders_router)
+app.include_router(customers_router)
 app.include_router(auth_router)
 
 

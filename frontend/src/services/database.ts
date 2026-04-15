@@ -286,6 +286,45 @@ export interface Order {
   updated_at?: string;
 }
 
+/**
+ * Customer type
+ */
+export interface Customer {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  location?: string;
+  avatar?: string;
+  joined_date: string;
+  total_orders: number;
+  total_spent: number;
+  status: 'active' | 'inactive' | 'vip';
+  last_order_date?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Customers Service
+ */
+export const customerService = {
+  list: (params?: QueryParams) =>
+    api.get<Customer[]>(apiConfig.endpoints.customers.list, params),
+
+  getById: (id: string | number) =>
+    api.get<Customer>(apiConfig.endpoints.customers.byId(id)),
+
+  create: (data: Partial<Customer>) =>
+    api.post<Customer>(apiConfig.endpoints.customers.create, data),
+
+  update: (id: string | number, data: Partial<Customer>) =>
+    api.put<Customer>(apiConfig.endpoints.customers.update(id), data),
+
+  delete: (id: string | number) =>
+    api.delete(apiConfig.endpoints.customers.delete(id)),
+};
+
 // Export all services
 export default {
   api,

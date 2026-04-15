@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { customerService, type Customer as ApiCustomer } from '@/services/database';
 
 interface Customer {
   id: string;
@@ -58,76 +59,39 @@ export default function Customers() {
   const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive' | 'vip'>('all');
 
   useEffect(() => {
-    setTimeout(() => {
-      setCustomers([
-        {
-          id: 'CUST-001',
-          name: 'John Smith',
-          email: 'john.smith@email.com',
-          phone: '+1 (555) 123-4567',
-          location: 'New York, USA',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-          joinedDate: '2023-06-15',
-          totalOrders: 24,
-          totalSpent: 3456.78,
-          status: 'vip',
-          lastOrder: '2024-03-10',
-        },
-        {
-          id: 'CUST-002',
-          name: 'Sarah Johnson',
-          email: 'sarah.j@email.com',
-          phone: '+1 (555) 987-6543',
-          location: 'Los Angeles, USA',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-          joinedDate: '2023-08-22',
-          totalOrders: 12,
-          totalSpent: 1234.56,
-          status: 'active',
-          lastOrder: '2024-03-14',
-        },
-        {
-          id: 'CUST-003',
-          name: 'Michael Brown',
-          email: 'mbrown@email.com',
-          phone: '+1 (555) 456-7890',
-          location: 'Chicago, USA',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael',
-          joinedDate: '2023-11-05',
-          totalOrders: 8,
-          totalSpent: 890.32,
-          status: 'active',
-          lastOrder: '2024-03-12',
-        },
-        {
-          id: 'CUST-004',
-          name: 'Emily Davis',
-          email: 'emily.d@email.com',
-          phone: '+1 (555) 234-5678',
-          location: 'Houston, USA',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily',
-          joinedDate: '2023-04-18',
-          totalOrders: 3,
-          totalSpent: 234.50,
-          status: 'inactive',
-          lastOrder: '2024-01-20',
-        },
-        {
-          id: 'CUST-005',
-          name: 'David Wilson',
-          email: 'dwilson@email.com',
-          phone: '+1 (555) 345-6789',
-          location: 'Phoenix, USA',
-          avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David',
-          joinedDate: '2023-09-30',
-          totalOrders: 18,
-          totalSpent: 2100.89,
-          status: 'vip',
-          lastOrder: '2024-03-15',
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    const loadCustomers = async () => {
+      setLoading(true);
+      try {
+        const result = await customerService.list();
+
+        if (result.success && result.data) {
+          // Transform API data to match frontend interface
+          const transformedCustomers: Customer[] = result.data.map((apiCustomer: ApiCustomer) => ({
+            id: `CUST-${String(apiCustomer.id).padStart(3, '0')}`,
+            name: apiCustomer.name,
+            email: apiCustomer.email,
+            phone: apiCustomer.phone || 'N/A',
+            location: apiCustomer.location || 'N/A',
+            avatar: apiCustomer.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${apiCustomer.name}`,
+            joinedDate: apiCustomer.joined_date ? new Date(apiCustomer.joined_date).toISOString().split('T')[0] : 'N/A',
+            totalOrders: apiCustomer.total_orders,
+            totalSpent: apiCustomer.total_spent,
+            status: apiCustomer.status as 'active' | 'inactive' | 'vip',
+            lastOrder: apiCustomer.last_order_date ? new Date(apiCustomer.last_order_date).toISOString().split('T')[0] : 'N/A',
+          }));
+
+          setCustomers(transformedCustomers);
+        } else {
+          console.error('Failed to load customers:', result.error);
+        }
+      } catch (error) {
+        console.error('Error loading customers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCustomers();
   }, []);
 
   const filteredCustomers = customers.filter((customer) => {
