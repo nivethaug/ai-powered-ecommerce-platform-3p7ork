@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "./layout/Layout";
+import Landing from "./pages/Landing";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
 import Customers from "./pages/Customers";
@@ -29,9 +30,7 @@ const App = () => (
           <Suspense fallback={<div className="p-6">Loading...</div>}>
             <Routes>
               {/* Public routes - landing page */}
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Products />} />
-              </Route>
+              <Route path="/" element={<Landing />} />
 
               {/* Public routes - auth pages */}
               <Route path="/login" element={<Login />} />
@@ -45,6 +44,8 @@ const App = () => (
                   </ProtectedRoute>
                 }
               >
+                <Route path="/dashboard" element={<Products />} />
+                <Route path="/products" element={<Products />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/inventory" element={<Inventory />} />

@@ -34,7 +34,7 @@ export default function Navbar() {
 
   // Public links available to everyone
   const publicLinks = [
-    { to: '/', label: 'Products', icon: Package },
+    { to: '/products', label: 'Products', icon: Package },
   ];
 
   // Protected links only for authenticated users
