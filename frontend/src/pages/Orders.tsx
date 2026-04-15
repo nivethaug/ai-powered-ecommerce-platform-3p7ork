@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ShoppingCart, Package, Truck, CheckCircle, XCircle, Clock, Search, Eye, Download } from 'lucide-react';
+import { orderService } from '@/services/database';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +16,14 @@ import {
 type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
 
 interface Order {
-  id: string;
-  customer: string;
-  email: string;
-  total: number;
+  id: number;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: number;
   status: OrderStatus;
-  date: string;
-  items: number;
+  item_count: number;
+  created_at: string;
 }
 
 interface StatCardProps {
@@ -49,69 +52,26 @@ function StatCard({ title, value, icon, trend, bgColor = 'bg-blue-50' }: StatCar
 }
 
 export default function Orders() {
-  const [loading, setLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus | 'all'>('all');
 
-  useEffect(() => {
-    setTimeout(() => {
-      setOrders([
-        {
-          id: 'ORD-001',
-          customer: 'John Smith',
-          email: 'john.smith@email.com',
-          total: 234.97,
-          status: 'pending',
-          date: '2024-03-15',
-          items: 3,
-        },
-        {
-          id: 'ORD-002',
-          customer: 'Sarah Johnson',
-          email: 'sarah.j@email.com',
-          total: 89.99,
-          status: 'processing',
-          date: '2024-03-14',
-          items: 1,
-        },
-        {
-          id: 'ORD-003',
-          customer: 'Michael Brown',
-          email: 'mbrown@email.com',
-          total: 456.50,
-          status: 'shipped',
-          date: '2024-03-13',
-          items: 5,
-        },
-        {
-          id: 'ORD-004',
-          customer: 'Emily Davis',
-          email: 'emily.d@email.com',
-          total: 123.75,
-          status: 'delivered',
-          date: '2024-03-10',
-          items: 2,
-        },
-        {
-          id: 'ORD-005',
-          customer: 'David Wilson',
-          email: 'dwilson@email.com',
-          total: 67.99,
-          status: 'cancelled',
-          date: '2024-03-12',
-          items: 1,
-        },
-      ]);
-      setLoading(false);
-    }, 500);
-  }, []);
+  // Fetch orders from backend API
+  const { data: orders = [], isLoading, error } = useQuery({
+    queryKey: ['orders'],
+    queryFn: async () => {
+      const result = await orderService.list();
+      if (result.success && result.data) {
+        return result.data;
+      }
+      throw new Error(result.error || 'Failed to fetch orders');
+    },
+  });
 
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
-      order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.email.toLowerCase().includes(searchTerm.toLowerCase());
+      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.customer_email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || order.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
@@ -157,15 +117,25 @@ export default function Orders() {
     shipped: orders.filter((o) => o.status === 'shipped').length,
     delivered: orders.filter((o) => o.status === 'delivered').length,
     cancelled: orders.filter((o) => o.status === 'cancelled').length,
-    revenue: orders.reduce((sum, order) => sum + order.total, 0),
+    revenue: orders.reduce((sum, order) => sum + order.total_amount, 0),
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-red-600">Error loading orders. Please try again.</p>
         </div>
       </div>
     );
@@ -277,15 +247,15 @@ export default function Orders() {
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="border-b hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{order.id}</div>
+                      <div className="font-medium text-gray-900">{order.order_number}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-medium text-gray-900">{order.customer}</div>
+                      <div className="font-medium text-gray-900">{order.customer_name}</div>
                     </td>
-                    <td className="py-3 px-4 text-gray-600">{order.email}</td>
-                    <td className="py-3 px-4 text-gray-600">{order.date}</td>
-                    <td className="py-3 px-4 text-gray-600">{order.items}</td>
-                    <td className="py-3 px-4 font-medium">${order.total.toFixed(2)}</td>
+                    <td className="py-3 px-4 text-gray-600">{order.customer_email}</td>
+                    <td className="py-3 px-4 text-gray-600">{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td className="py-3 px-4 text-gray-600">{order.item_count}</td>
+                    <td className="py-3 px-4 font-medium">${order.total_amount.toFixed(2)}</td>
                     <td className="py-3 px-4">
                       <Badge className={getStatusColor(order.status)}>
                         <span className="flex items-center gap-1">
