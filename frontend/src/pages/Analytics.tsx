@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, DollarSign, Users, ShoppingCart, Download, Calendar, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { BarChart3, TrendingUp, DollarSign, Users, ShoppingCart, Download, Calendar, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { analyticsService } from '@/services/database';
 
 interface MetricCardProps {
   title: string;
@@ -88,63 +90,44 @@ function SimpleBarChart({ data, title, color = '#3b82f6' }: BarChartProps) {
 }
 
 export default function Analytics() {
-  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d');
-  const [refreshing, setRefreshing] = useState(false);
 
-  const [metrics, setMetrics] = useState({
-    totalRevenue: 45678.90,
-    totalOrders: 1289,
-    totalCustomers: 342,
-    conversionRate: 3.24,
-    averageOrderValue: 35.42,
-    revenueGrowth: 12.5,
-    ordersGrowth: 8.3,
-    customersGrowth: 15.2,
+  // Fetch overview metrics
+  const { data: overviewData, isLoading: overviewLoading, refetch: refetchOverview } = useQuery({
+    queryKey: ['analytics-overview', dateRange],
+    queryFn: () => analyticsService.getOverview({ period: dateRange }),
   });
 
-  const [revenueData, setRevenueData] = useState<ChartData[]>([]);
-  const [ordersData, setOrdersData] = useState<ChartData[]>([]);
-  const [categoryData, setCategoryData] = useState<ChartData[]>([]);
+  // Fetch revenue by period
+  const { data: revenueResponse, isLoading: revenueLoading, refetch: refetchRevenue } = useQuery({
+    queryKey: ['analytics-revenue', dateRange],
+    queryFn: () => analyticsService.getRevenueByPeriod({ period: dateRange }),
+  });
 
-  useEffect(() => {
-    setTimeout(() => {
-      setRevenueData([
-        { label: 'Mon', value: 4230 },
-        { label: 'Tue', value: 5120 },
-        { label: 'Wed', value: 4890 },
-        { label: 'Thu', value: 6120 },
-        { label: 'Fri', value: 7340 },
-        { label: 'Sat', value: 8920 },
-        { label: 'Sun', value: 9058 },
-      ]);
+  // Fetch orders by period
+  const { data: ordersResponse, isLoading: ordersLoading, refetch: refetchOrders } = useQuery({
+    queryKey: ['analytics-orders', dateRange],
+    queryFn: () => analyticsService.getOrdersByPeriod({ period: dateRange }),
+  });
 
-      setOrdersData([
-        { label: 'Mon', value: 120 },
-        { label: 'Tue', value: 145 },
-        { label: 'Wed', value: 138 },
-        { label: 'Thu', value: 172 },
-        { label: 'Fri', value: 198 },
-        { label: 'Sat', value: 245 },
-        { label: 'Sun', value: 271 },
-      ]);
+  // Fetch revenue by category
+  const { data: categoryResponse, isLoading: categoryLoading, refetch: refetchCategory } = useQuery({
+    queryKey: ['analytics-category', dateRange],
+    queryFn: () => analyticsService.getRevenueByCategory({ period: dateRange }),
+  });
 
-      setCategoryData([
-        { label: 'Electronics', value: 18920 },
-        { label: 'Clothing', value: 12450 },
-        { label: 'Home & Garden', value: 7890 },
-        { label: 'Sports', value: 6418 },
-      ]);
+  const metrics = overviewData?.data || {};
+  const revenueData = revenueResponse?.data?.data || [];
+  const ordersData = ordersResponse?.data?.data || [];
+  const categoryData = categoryResponse?.data?.data || [];
 
-      setLoading(false);
-    }, 500);
-  }, []);
+  const loading = overviewLoading || revenueLoading || ordersLoading || categoryLoading;
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 1000);
+    refetchOverview();
+    refetchRevenue();
+    refetchOrders();
+    refetchCategory();
   };
 
   const handleExport = () => {
@@ -162,6 +145,21 @@ export default function Analytics() {
     );
   }
 
+  if (overviewData?.success === false || revenueResponse?.success === false) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-600">Failed to load analytics. Please try again.</p>
+          <Button onClick={handleRefresh} className="mt-4">
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -171,8 +169,8 @@ export default function Analytics() {
           <p className="text-gray-600 mt-1">Track your store performance and insights</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          <Button variant="outline" onClick={handleRefresh} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button variant="outline" onClick={handleExport}>
@@ -210,31 +208,31 @@ export default function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Revenue"
-          value={`$${metrics.totalRevenue.toLocaleString()}`}
+          value={`$${(metrics.total_revenue || 0).toLocaleString()}`}
           icon={<DollarSign className="w-6 h-6 text-green-500" />}
-          trend={`${metrics.revenueGrowth}%`}
-          trendUp={metrics.revenueGrowth > 0}
+          trend={`${metrics.revenue_growth || 0}%`}
+          trendUp={metrics.revenue_growth > 0}
           bgColor="bg-green-50"
         />
         <MetricCard
           title="Total Orders"
-          value={metrics.totalOrders.toLocaleString()}
+          value={(metrics.total_orders || 0).toLocaleString()}
           icon={<ShoppingCart className="w-6 h-6 text-blue-500" />}
-          trend={`${metrics.ordersGrowth}%`}
-          trendUp={metrics.ordersGrowth > 0}
+          trend={`${metrics.orders_growth || 0}%`}
+          trendUp={metrics.orders_growth > 0}
           bgColor="bg-blue-50"
         />
         <MetricCard
           title="Total Customers"
-          value={metrics.totalCustomers.toLocaleString()}
+          value={(metrics.total_customers || 0).toLocaleString()}
           icon={<Users className="w-6 h-6 text-purple-500" />}
-          trend={`${metrics.customersGrowth}%`}
-          trendUp={metrics.customersGrowth > 0}
+          trend={`${metrics.customers_growth || 0}%`}
+          trendUp={metrics.customers_growth > 0}
           bgColor="bg-purple-50"
         />
         <MetricCard
           title="Conversion Rate"
-          value={`${metrics.conversionRate}%`}
+          value={`${metrics.conversion_rate || 0}%`}
           icon={<TrendingUp className="w-6 h-6 text-orange-500" />}
           trend="+2.1%"
           trendUp={true}
@@ -246,7 +244,7 @@ export default function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <MetricCard
           title="Average Order Value"
-          value={`$${metrics.averageOrderValue.toFixed(2)}`}
+          value={`$${(metrics.average_order_value || 0).toFixed(2)}`}
           icon={<DollarSign className="w-6 h-6 text-teal-500" />}
           trend="+5.4%"
           trendUp={true}
@@ -254,7 +252,7 @@ export default function Analytics() {
         />
         <MetricCard
           title="Revenue Growth"
-          value={`${metrics.revenueGrowth}%`}
+          value={`${metrics.revenue_growth || 0}%`}
           icon={<BarChart3 className="w-6 h-6 text-indigo-500" />}
           trend="+3.2%"
           trendUp={true}
@@ -266,12 +264,12 @@ export default function Analytics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SimpleBarChart
           data={revenueData}
-          title="Revenue by Day"
+          title="Revenue by Period"
           color="#3b82f6"
         />
         <SimpleBarChart
           data={ordersData}
-          title="Orders by Day"
+          title="Orders by Period"
           color="#10b981"
         />
       </div>
@@ -290,33 +288,47 @@ export default function Analytics() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-green-900">Revenue is trending up</p>
-                <p className="text-sm text-green-700">
-                  Your revenue has increased by {metrics.revenueGrowth}% compared to the previous period.
-                </p>
+            {metrics.revenue_growth > 0 ? (
+              <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-green-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-green-900">Revenue is trending up</p>
+                  <p className="text-sm text-green-700">
+                    Your revenue has increased by {metrics.revenue_growth}% compared to the previous period.
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-red-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-red-900">Revenue is trending down</p>
+                  <p className="text-sm text-red-700">
+                    Your revenue has decreased by {Math.abs(metrics.revenue_growth)}% compared to the previous period.
+                  </p>
+                </div>
+              </div>
+            )}
             <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
               <ShoppingCart className="w-5 h-5 text-blue-600 mt-0.5" />
               <div>
-                <p className="font-medium text-blue-900">Weekend performance strong</p>
+                <p className="font-medium text-blue-900">Performance overview</p>
                 <p className="text-sm text-blue-700">
-                  Consider running promotions on weekdays to balance order distribution.
+                  You've processed {metrics.total_orders} orders with an average value of ${metrics.average_order_value?.toFixed(2)}.
                 </p>
               </div>
             </div>
-            <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-purple-600 mt-0.5" />
-              <div>
-                <p className="font-medium text-purple-900">Electronics leading category</p>
-                <p className="text-sm text-purple-700">
-                  Electronics category generates 41% of total revenue. Consider expanding this category.
-                </p>
+            {categoryData.length > 0 && (
+              <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-purple-600 mt-0.5" />
+                <div>
+                  <p className="font-medium text-purple-900">Top category</p>
+                  <p className="text-sm text-purple-700">
+                    {categoryData[0].label} is your top category. Consider expanding inventory in this area.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -325,6 +325,41 @@ export const customerService = {
     api.delete(apiConfig.endpoints.customers.delete(id)),
 };
 
+/**
+ * Analytics Service
+ */
+export const analyticsService = {
+  getOverview: (params?: QueryParams) =>
+    api.get<{
+      total_revenue: number;
+      total_orders: number;
+      total_customers: number;
+      conversion_rate: number;
+      average_order_value: number;
+      revenue_growth: number;
+      orders_growth: number;
+      customers_growth: number;
+    }>(apiConfig.endpoints.analytics.overview, params),
+
+  getRevenueByPeriod: (params?: QueryParams) =>
+    api.get<{ data: Array<{ label: string; value: number }> }>(
+      apiConfig.endpoints.analytics.revenueByPeriod,
+      params
+    ),
+
+  getOrdersByPeriod: (params?: QueryParams) =>
+    api.get<{ data: Array<{ label: string; value: number }> }>(
+      apiConfig.endpoints.analytics.ordersByPeriod,
+      params
+    ),
+
+  getRevenueByCategory: (params?: QueryParams) =>
+    api.get<{ data: Array<{ label: string; value: number }> }>(
+      apiConfig.endpoints.analytics.revenueByCategory,
+      params
+    ),
+};
+
 // Export all services
 export default {
   api,
@@ -333,5 +368,7 @@ export default {
   userService,
   productService,
   orderService,
+  customerService,
+  analyticsService,
   createCrudService,
 };
