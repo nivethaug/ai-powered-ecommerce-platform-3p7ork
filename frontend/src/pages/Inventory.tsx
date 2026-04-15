@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Box, Plus, Search, AlertTriangle, Package, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,21 +12,52 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { productService, Product } from '@/services/database';
 
 interface InventoryItem {
   id: string;
   name: string;
-  sku: string;
+  sku?: string;
   category: string;
   currentStock: number;
-  minStock: number;
-  maxStock: number;
-  reorderPoint: number;
+  minStock?: number;
+  maxStock?: number;
+  reorderPoint?: number;
   unitPrice: number;
-  supplier: string;
-  lastRestocked: string;
+  supplier?: string;
+  lastRestocked?: string;
   status: 'in-stock' | 'low-stock' | 'out-of-stock' | 'overstocked';
   trend: 'up' | 'down' | 'stable';
+}
+
+// Helper function to calculate status from stock quantity
+function calculateStatus(stockQuantity: number): InventoryItem['status'] {
+  if (stockQuantity === 0) return 'out-of-stock';
+  if (stockQuantity < 20) return 'low-stock';
+  if (stockQuantity > 100) return 'overstocked';
+  return 'in-stock';
+}
+
+// Helper function to map Product to InventoryItem
+function mapProductToInventoryItem(product: Product): InventoryItem {
+  const status = calculateStatus(product.stock_quantity);
+  const maxStock = product.stock_quantity > 100 ? 150 : 100;
+
+  return {
+    id: product.id.toString(),
+    name: product.name,
+    sku: `SKU-${product.id.toString().padStart(4, '0')}`,
+    category: product.category || 'Uncategorized',
+    currentStock: product.stock_quantity,
+    minStock: 10,
+    maxStock: maxStock,
+    reorderPoint: 15,
+    unitPrice: product.price,
+    supplier: 'Default Supplier',
+    lastRestocked: product.created_at ? new Date(product.created_at).toISOString().split('T')[0] : undefined,
+    status: status,
+    trend: 'stable' as const,
+  };
 }
 
 interface StatCardProps {
@@ -54,95 +86,27 @@ function StatCard({ title, value, icon, trend, bgColor = 'bg-blue-50' }: StatCar
 }
 
 export default function Inventory() {
-  const [loading, setLoading] = useState(true);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const categories = ['all', 'Electronics', 'Clothing', 'Home & Garden', 'Sports'];
+  // Fetch products from database
+  const { data: products = [], isLoading, error } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const result = await productService.list();
+      if (result.success && result.data) {
+        return result.data;
+      }
+      return [];
+    },
+  });
 
-  useEffect(() => {
-    setTimeout(() => {
-      setInventory([
-        {
-          id: 'INV-001',
-          name: 'Wireless Bluetooth Headphones',
-          sku: 'WBH-001',
-          category: 'Electronics',
-          currentStock: 45,
-          minStock: 10,
-          maxStock: 100,
-          reorderPoint: 15,
-          unitPrice: 79.99,
-          supplier: 'TechSupply Co.',
-          lastRestocked: '2024-03-01',
-          status: 'in-stock',
-          trend: 'up',
-        },
-        {
-          id: 'INV-002',
-          name: 'Premium Cotton T-Shirt',
-          sku: 'PCT-002',
-          category: 'Clothing',
-          currentStock: 8,
-          minStock: 20,
-          maxStock: 200,
-          reorderPoint: 25,
-          unitPrice: 24.99,
-          supplier: 'FashionHub Inc.',
-          lastRestocked: '2024-02-15',
-          status: 'low-stock',
-          trend: 'down',
-        },
-        {
-          id: 'INV-003',
-          name: 'Smart Home Speaker',
-          sku: 'SHS-003',
-          category: 'Electronics',
-          currentStock: 0,
-          minStock: 15,
-          maxStock: 80,
-          reorderPoint: 20,
-          unitPrice: 129.99,
-          supplier: 'TechSupply Co.',
-          lastRestocked: '2024-01-20',
-          status: 'out-of-stock',
-          trend: 'stable',
-        },
-        {
-          id: 'INV-004',
-          name: 'Garden Tool Set',
-          sku: 'GTS-004',
-          category: 'Home & Garden',
-          currentStock: 150,
-          minStock: 10,
-          maxStock: 50,
-          reorderPoint: 15,
-          unitPrice: 49.99,
-          supplier: 'GardenPro Ltd.',
-          lastRestocked: '2024-02-28',
-          status: 'overstocked',
-          trend: 'down',
-        },
-        {
-          id: 'INV-005',
-          name: 'Yoga Mat Premium',
-          sku: 'YMP-005',
-          category: 'Sports',
-          currentStock: 67,
-          minStock: 15,
-          maxStock: 100,
-          reorderPoint: 20,
-          unitPrice: 34.99,
-          supplier: 'FitnessGear Corp.',
-          lastRestocked: '2024-03-05',
-          status: 'in-stock',
-          trend: 'up',
-        },
-      ]);
-      setLoading(false);
-    }, 500);
-  }, []);
+  // Map products to inventory items
+  const inventory: InventoryItem[] = products.map(mapProductToInventoryItem);
+
+  // Extract unique categories from products
+  const categorySet = new Set(products.map(p => p.category || 'Uncategorized'));
+  const categories = ['all', ...Array.from(categorySet).sort()];
 
   const filteredInventory = inventory.filter((item) => {
     const matchesSearch =
@@ -186,12 +150,23 @@ export default function Inventory() {
     totalValue: inventory.reduce((sum, item) => sum + item.currentStock * item.unitPrice, 0),
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading inventory...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-600">Failed to load inventory. Please try again.</p>
         </div>
       </div>
     );
@@ -327,7 +302,7 @@ export default function Inventory() {
                         <div className="font-medium text-gray-900">{item.name}</div>
                         <div className="text-xs text-gray-500">{item.id}</div>
                       </td>
-                      <td className="py-3 px-4 text-gray-600">{item.sku}</td>
+                      <td className="py-3 px-4 text-gray-600">{item.sku || 'N/A'}</td>
                       <td className="py-3 px-4 text-gray-600">{item.category}</td>
                       <td className="py-3 px-4">
                         <div className="space-y-1">
@@ -336,9 +311,11 @@ export default function Inventory() {
                             <span className="text-gray-500 text-sm">/ {item.maxStock}</span>
                           </div>
                           <Progress value={stockPercentage} className="h-2" />
-                          <p className="text-xs text-gray-500">
-                            Min: {item.minStock} | Reorder at: {item.reorderPoint}
-                          </p>
+                          {item.minStock && item.reorderPoint && (
+                            <p className="text-xs text-gray-500">
+                              Min: {item.minStock} | Reorder at: {item.reorderPoint}
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -347,7 +324,7 @@ export default function Inventory() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4 font-medium">${item.unitPrice.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-gray-600">{item.supplier}</td>
+                      <td className="py-3 px-4 text-gray-600">{item.supplier || 'N/A'}</td>
                       <td className="py-3 px-4">
                         {item.trend === 'up' && <TrendingUp className="w-4 h-4 text-green-500" />}
                         {item.trend === 'down' && <TrendingDown className="w-4 h-4 text-red-500" />}
