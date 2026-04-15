@@ -1,10 +1,11 @@
 // AI Insights Page - Displays AI-powered business insights and forecasts
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Lightbulb, TrendingUp, TrendingDown, Minus, ThumbsUp, ThumbsDown, RefreshCw, AlertTriangle, Info } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Lightbulb, TrendingUp, TrendingDown, Minus, ThumbsUp, ThumbsDown, RefreshCw, AlertTriangle, Info, Filter, X } from "lucide-react";
 import { aiInsightsService } from "@/services/database";
 
 interface Insight {
@@ -31,6 +32,9 @@ const AIInsights = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterSeverity, setFilterSeverity] = useState<string>("all");
+  const [filterTrend, setFilterTrend] = useState<string>("all");
 
   const fetchInsights = async () => {
     try {
@@ -56,6 +60,23 @@ const AIInsights = () => {
     setRefreshing(true);
     await fetchInsights();
   };
+
+  const handleClearFilters = () => {
+    setFilterType("all");
+    setFilterSeverity("all");
+    setFilterTrend("all");
+  };
+
+  const filteredInsights = useMemo(() => {
+    return insights.filter(insight => {
+      if (filterType !== "all" && insight.type !== filterType) return false;
+      if (filterSeverity !== "all" && insight.severity !== filterSeverity) return false;
+      if (filterTrend !== "all" && insight.trend !== filterTrend) return false;
+      return true;
+    });
+  }, [insights, filterType, filterSeverity, filterTrend]);
+
+  const hasActiveFilters = filterType !== "all" || filterSeverity !== "all" || filterTrend !== "all";
 
   const handleFeedback = async (insightId: string, isHelpful: boolean) => {
     try {
@@ -174,6 +195,79 @@ const AIInsights = () => {
         </Button>
       </div>
 
+      {/* Filters */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              <CardTitle className="text-lg">Filters</CardTitle>
+              {hasActiveFilters && (
+                <Badge variant="secondary">{filteredInsights.length} of {insights.length}</Badge>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <Button
+                onClick={handleClearFilters}
+                variant="ghost"
+                size="sm"
+                className="h-8"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear Filters
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Type</label>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="sales">Sales</SelectItem>
+                  <SelectItem value="inventory">Inventory</SelectItem>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="performance">Performance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Severity</label>
+              <Select value={filterSeverity} onValueChange={setFilterSeverity}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All severities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Severities</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="warning">Warning</SelectItem>
+                  <SelectItem value="info">Info</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Trend</label>
+              <Select value={filterTrend} onValueChange={setFilterTrend}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All trends" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Trends</SelectItem>
+                  <SelectItem value="growing">Growing</SelectItem>
+                  <SelectItem value="declining">Declining</SelectItem>
+                  <SelectItem value="stable">Stable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Overview Stats */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -183,7 +277,7 @@ const AIInsights = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{insights.length}</div>
+            <div className="text-2xl font-bold">{filteredInsights.length}</div>
             <p className="text-xs text-muted-foreground mt-1">Active recommendations</p>
           </CardContent>
         </Card>
@@ -196,9 +290,9 @@ const AIInsights = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {insights.length > 0
+              {filteredInsights.length > 0
                 ? Math.round(
-                    insights.reduce((sum, i) => sum + i.helpful_percentage, 0) / insights.length
+                    filteredInsights.reduce((sum, i) => sum + i.helpful_percentage, 0) / filteredInsights.length
                   )
                 : 0}
               %
@@ -215,7 +309,7 @@ const AIInsights = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {insights.filter(i => i.severity === "critical").length}
+              {filteredInsights.filter(i => i.severity === "critical").length}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Needs attention</p>
           </CardContent>
@@ -224,21 +318,39 @@ const AIInsights = () => {
 
       {/* Insights List */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Sales Forecasting & Insights</h2>
+        <h2 className="text-xl font-semibold">
+          {hasActiveFilters ? `Filtered Insights (${filteredInsights.length})` : "Sales Forecasting & Insights"}
+        </h2>
 
-        {insights.length === 0 ? (
+        {filteredInsights.length === 0 ? (
           <Card>
             <CardContent className="py-8">
               <div className="text-center text-muted-foreground">
                 <Lightbulb className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No insights available yet.</p>
-                <p className="text-sm mt-2">Add some orders and products to generate insights.</p>
+                {hasActiveFilters ? (
+                  <>
+                    <p>No insights match your filters.</p>
+                    <Button
+                      onClick={handleClearFilters}
+                      variant="outline"
+                      size="sm"
+                      className="mt-4"
+                    >
+                      Clear Filters
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p>No insights available yet.</p>
+                    <p className="text-sm mt-2">Add some orders and products to generate insights.</p>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {insights.map((insight) => (
+            {filteredInsights.map((insight) => (
               <Card key={insight.id} className="overflow-hidden">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
