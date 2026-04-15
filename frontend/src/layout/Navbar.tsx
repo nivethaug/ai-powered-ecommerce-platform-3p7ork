@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, X, Package, ShoppingCart, Users, Box, BarChart3, Settings, LogOut, User } from 'lucide-react';
+import { Menu, X, Package, ShoppingCart, Users, Box, BarChart3, Lightbulb, Settings, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -43,6 +43,7 @@ export default function Navbar() {
     { to: '/customers', label: 'Customers', icon: Users },
     { to: '/inventory', label: 'Inventory', icon: Box },
     { to: '/analytics', label: 'Analytics', icon: BarChart3 },
+    { to: '/ai-insights', label: 'AI Insights', icon: Lightbulb },
     { to: '/storesettings', label: 'Settings', icon: Settings },
   ];
 

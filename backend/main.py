@@ -19,6 +19,7 @@ from routes.products import router as products_router
 from routes.orders import router as orders_router
 from routes.customers import router as customers_router
 from routes.analytics import router as analytics_router
+from routes.ai_insights import router as ai_insights_router
 
 
 @asynccontextmanager
@@ -188,6 +189,7 @@ app.include_router(orders_router)
 app.include_router(customers_router)
 app.include_router(auth_router)
 app.include_router(analytics_router)
+app.include_router(ai_insights_router)
 
 
 @app.get("/swagger", include_in_schema=False)

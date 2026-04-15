@@ -13,6 +13,7 @@ import Orders from "./pages/Orders";
 import Customers from "./pages/Customers";
 import Inventory from "./pages/Inventory";
 import Analytics from "./pages/Analytics";
+import AIInsights from "./pages/AIInsights";
 import Storesettings from "./pages/Storesettings";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -50,6 +51,7 @@ const App = () => (
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/analytics" element={<Analytics />} />
+                <Route path="/ai-insights" element={<AIInsights />} />
                 <Route path="/storesettings" element={<Storesettings />} />
                 <Route path="*" element={<NotFound />} />
               </Route>

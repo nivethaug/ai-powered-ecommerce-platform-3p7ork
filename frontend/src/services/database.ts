@@ -306,6 +306,31 @@ export interface Customer {
 }
 
 /**
+ * AI Insight type
+ */
+export interface AIInsight {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  severity: string;
+  trend: string;
+  value?: number;
+  change_percent: number;
+  helpful_percentage: number;
+  total_feedback: number;
+}
+
+/**
+ * AI Insights Response type
+ */
+export interface AIInsightsResponse {
+  insights: AIInsight[];
+  total_count: number;
+  generated_at: string;
+}
+
+/**
  * Customers Service
  */
 export const customerService = {
@@ -360,6 +385,25 @@ export const analyticsService = {
     ),
 };
 
+/**
+ * AI Insights Service
+ */
+export const aiInsightsService = {
+  getAllInsights: () =>
+    api.get<AIInsightsResponse>("/api/ai-insights"),
+
+  submitInsightFeedback: (insightId: string, isHelpful: boolean, userId?: number) =>
+    api.post<{
+      success: boolean;
+      helpful_percentage: number;
+      total_feedback: number;
+      message: string;
+    }>(`/api/ai-insights/${insightId}/feedback`, {
+      is_helpful: isHelpful,
+      user_id: userId,
+    }),
+};
+
 // Export all services
 export default {
   api,
@@ -370,5 +414,6 @@ export default {
   orderService,
   customerService,
   analyticsService,
+  aiInsightsService,
   createCrudService,
 };
