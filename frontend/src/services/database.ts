@@ -207,18 +207,38 @@ export function createCrudService<T>(resource: string) {
 export const productService = {
   list: (params?: QueryParams) =>
     api.get<Product[]>(apiConfig.endpoints.products.list, params),
-  
+
   getById: (id: string | number) =>
     api.get<Product>(apiConfig.endpoints.products.byId(id)),
-  
+
   create: (data: Partial<Product>) =>
     api.post<Product>(apiConfig.endpoints.products.create, data),
-  
+
   update: (id: string | number, data: Partial<Product>) =>
     api.put<Product>(apiConfig.endpoints.products.update(id), data),
-  
+
   delete: (id: string | number) =>
     api.delete(apiConfig.endpoints.products.delete(id)),
+};
+
+/**
+ * Orders Service
+ */
+export const orderService = {
+  list: (params?: QueryParams) =>
+    api.get<Order[]>(apiConfig.endpoints.orders.list, params),
+
+  getById: (id: string | number) =>
+    api.get<Order>(apiConfig.endpoints.orders.byId(id)),
+
+  create: (data: Partial<Order>) =>
+    api.post<Order>(apiConfig.endpoints.orders.create, data),
+
+  update: (id: string | number, data: Partial<Order>) =>
+    api.put<Order>(apiConfig.endpoints.orders.update(id), data),
+
+  delete: (id: string | number) =>
+    api.delete(apiConfig.endpoints.orders.delete(id)),
 };
 
 
@@ -251,6 +271,21 @@ export interface Product {
   updated_at?: string;
 }
 
+/**
+ * Order type
+ */
+export interface Order {
+  id: number;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  total_amount: number;
+  status: string;
+  item_count: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Export all services
 export default {
   api,
@@ -258,5 +293,6 @@ export default {
   authService,
   userService,
   productService,
+  orderService,
   createCrudService,
 };
