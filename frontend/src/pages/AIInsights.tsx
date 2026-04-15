@@ -1,3 +1,4 @@
+// AI Insights Page - Displays AI-powered business insights and forecasts
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
